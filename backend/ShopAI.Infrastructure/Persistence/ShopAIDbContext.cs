@@ -33,6 +33,39 @@ public class ShopAIDbContext : DbContext, IApplicationDbContext
         return Database.BeginTransactionAsync(cancellationToken);
     }
 
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        UpdateAuditTimestamps();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override int SaveChanges()
+    {
+        UpdateAuditTimestamps();
+        return base.SaveChanges();
+    }
+
+    private void UpdateAuditTimestamps()
+    {
+        var entries = ChangeTracker.Entries<ShopAI.Domain.Common.BaseEntity>();
+        var now = DateTime.UtcNow;
+
+        foreach (var entry in entries)
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (entry.Entity.CreatedAt == default)
+                {
+                    entry.Entity.CreatedAt = now;
+                }
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = now;
+            }
+        }
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

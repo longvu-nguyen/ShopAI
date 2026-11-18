@@ -154,6 +154,7 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHealthChecks("/health");
 app.MapControllers().RequireRateLimiting("fixed");
 
 app.Run();

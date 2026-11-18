@@ -2,34 +2,30 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using ShopAI.Application.Interfaces;
 using ShopAI.Domain.Entities;
+using ShopAI.Infrastructure.Options;
 
 namespace ShopAI.Infrastructure.Services;
 
 public class JwtService : IJwtService
 {
-    private readonly IConfiguration _configuration;
+    private readonly JwtOptions _options;
 
-    public JwtService(IConfiguration configuration)
+    public JwtService(IOptions<JwtOptions> options)
     {
-        _configuration = configuration;
+        _options = options.Value;
     }
 
     public (string Token, string Jti, DateTime Expiry) GenerateAccessToken(User user, IEnumerable<string> roles)
     {
-        var secretKey = _configuration["Jwt:Key"] ?? "ShopAI_SuperSecret_Jwt_SigningKey_2026_MustBeLongEnough!";
-        var issuer = _configuration["Jwt:Issuer"] ?? "ShopAI";
-        var audience = _configuration["Jwt:Audience"] ?? "ShopAIClient";
-        var expiryMinutes = int.TryParse(_configuration["Jwt:AccessTokenExpirationMinutes"], out var min) ? min : 60;
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var jti = Guid.NewGuid().ToString();
-        var expiry = DateTime.UtcNow.AddMinutes(expiryMinutes);
+        var expiry = DateTime.UtcNow.AddMinutes(_options.AccessTokenExpirationMinutes);
 
         var claims = new List<Claim>
         {
@@ -48,8 +44,8 @@ public class JwtService : IJwtService
         {
             Subject = new ClaimsIdentity(claims),
             Expires = expiry,
-            Issuer = issuer,
-            Audience = audience,
+            Issuer = _options.Issuer,
+            Audience = _options.Audience,
             SigningCredentials = credentials
         };
 
@@ -60,8 +56,6 @@ public class JwtService : IJwtService
 
     public RefreshToken GenerateRefreshToken(Guid userId, string jti)
     {
-        var expiryDays = int.TryParse(_configuration["Jwt:RefreshTokenExpirationDays"], out var days) ? days : 7;
-
         var randomNumber = new byte[64];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomNumber);
@@ -73,7 +67,7 @@ public class JwtService : IJwtService
             JwtId = jti,
             IsUsed = false,
             IsRevoked = false,
-            ExpiryDate = DateTime.UtcNow.AddDays(expiryDays)
+            ExpiryDate = DateTime.UtcNow.AddDays(_options.RefreshTokenExpirationDays)
         };
     }
 }

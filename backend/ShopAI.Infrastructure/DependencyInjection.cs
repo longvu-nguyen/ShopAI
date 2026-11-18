@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using ShopAI.Application.Interfaces;
+using ShopAI.Infrastructure.Options;
 using ShopAI.Infrastructure.Persistence;
 using ShopAI.Infrastructure.Services;
 
@@ -14,6 +15,11 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        // Bind Options Pattern
+        var jwtSection = configuration.GetSection(JwtOptions.SectionName);
+        services.Configure<JwtOptions>(jwtSection);
+        var jwtOptions = jwtSection.Get<JwtOptions>() ?? new JwtOptions();
+
         // PostgreSQL DbContext
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? "Host=localhost;Port=5432;Database=shopai_db;Username=postgres;Password=postgres;";
@@ -23,7 +29,11 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ShopAIDbContext>());
 
-        // Services
+        // Health Checks
+        services.AddHealthChecks()
+            .AddDbContextCheck<ShopAIDbContext>(name: "postgresql_db", tags: new[] { "db", "ready" });
+
+        // Core Infrastructure Services
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IFileStorageService, FileStorageService>();
@@ -38,10 +48,6 @@ public static class DependencyInjection
         services.AddScoped<IWishlistService, WishlistService>();
 
         // JWT Authentication
-        var secretKey = configuration["Jwt:Key"] ?? "ShopAI_SuperSecret_Jwt_SigningKey_2026_MustBeLongEnough!";
-        var issuer = configuration["Jwt:Issuer"] ?? "ShopAI";
-        var audience = configuration["Jwt:Audience"] ?? "ShopAIClient";
-
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -54,11 +60,11 @@ public static class DependencyInjection
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
                 ValidateIssuer = true,
-                ValidIssuer = issuer,
+                ValidIssuer = jwtOptions.Issuer,
                 ValidateAudience = true,
-                ValidAudience = audience,
+                ValidAudience = jwtOptions.Audience,
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.FromMinutes(1)
             };
