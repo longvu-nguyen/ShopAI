@@ -33,7 +33,6 @@ public class AiChatService : IAiChatService
         if (!string.IsNullOrWhiteSpace(request.SessionToken))
         {
             session = await _context.ChatSessions
-                .Include(s => s.Messages)
                 .FirstOrDefaultAsync(s => s.SessionToken == request.SessionToken, cancellationToken);
         }
 
@@ -63,7 +62,7 @@ public class AiChatService : IAiChatService
             Sender = "User",
             Message = userText
         };
-        session.Messages.Add(userMsg);
+        _context.ChatMessages.Add(userMsg);
 
         // 2. Process Assistant Response
         var (replyText, recommendations, orderSummary) = await GenerateReplyAsync(userText, userId, cancellationToken);
@@ -81,7 +80,7 @@ public class AiChatService : IAiChatService
             Message = replyText,
             MetadataJson = metadataJson
         };
-        session.Messages.Add(assistantMsg);
+        _context.ChatMessages.Add(assistantMsg);
 
         await _context.SaveChangesAsync(cancellationToken);
 

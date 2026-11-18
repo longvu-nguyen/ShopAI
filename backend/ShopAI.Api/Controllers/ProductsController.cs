@@ -90,8 +90,10 @@ public class ProductsController : ApiControllerBase
 
     [Authorize(Roles = "Admin")]
     [HttpPost("upload-image")]
-    public async Task<ActionResult<ApiResponse<string>>> UploadImage([FromForm] IFormFile file, CancellationToken cancellationToken)
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<ApiResponse<string>>> UploadImage([FromForm] ImageUploadRequest request, CancellationToken cancellationToken)
     {
+        var file = request?.File;
         if (file == null || file.Length == 0)
         {
             return BadRequest(ApiResponse<string>.Fail("No file provided."));
@@ -108,4 +110,9 @@ public class ProductsController : ApiControllerBase
         var relativeUrl = await _fileStorage.SaveFileAsync(stream, file.FileName, "products", cancellationToken);
         return Ok(ApiResponse<string>.Ok(relativeUrl, "Image uploaded successfully."));
     }
+}
+
+public class ImageUploadRequest
+{
+    public IFormFile File { get; set; } = null!;
 }
