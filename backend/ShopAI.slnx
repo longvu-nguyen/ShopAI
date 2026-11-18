@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="ShopAI.Api/ShopAI.Api.csproj" />
+  <Project Path="ShopAI.Application/ShopAI.Application.csproj" />
+  <Project Path="ShopAI.Domain/ShopAI.Domain.csproj" />
+  <Project Path="ShopAI.Infrastructure/ShopAI.Infrastructure.csproj" />
+  <Project Path="ShopAI.Tests/ShopAI.Tests.csproj" />
+</Solution>

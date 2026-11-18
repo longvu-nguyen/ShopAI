@@ -1,0 +1,53 @@
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: shopai_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: shopai_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d shopai_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shopai_backend
+    restart: always
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=database;Port=5432;Database=shopai_db;Username=postgres;Password=postgrespassword;
+      - Jwt__Key=ShopAI_SuperSecret_Jwt_SigningKey_2026_MustBeLongEnough_32BytesOrMore!
+      - Jwt__Issuer=ShopAI
+      - Jwt__Audience=ShopAIClient
+    ports:
+      - "5104:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:/app/wwwroot/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: shopai_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_uploads:

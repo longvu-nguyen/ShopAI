@@ -1,0 +1,19 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+appsettings.Production.json
+
+# Node & Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment & Editor
+.env
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
